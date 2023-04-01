@@ -32,28 +32,28 @@ local function Hedera_Sunrise(pawnId)
 	local ret = SkillEffect()
 	
 	if pawn and pawn:IsAbility("Mourningstar") then
-		local damage = SpaceDamage(Point(0,0),0)
-		damage.iFire = 1
-		damage.sAnimation = "ExploSunbeam"
-		
-		local shine = SpaceDamage(p1,0)
-		shine.sAnimation = "ExploSunrise"
-		ret:AddDamage(shine)
-		
-		ret:AddBoardShake(0.1)
-		
+		if Board then Board:AddAnimation(p1,"ExploSunrise",0) Board:StartShake(0.1) end-- prevent possible crash when player backs out to menu
+		--I am not sure adding a shake is necessary given the deployment also creates a board shake.
+		--Perhaps this is a remnant of when you weren't able to make this exactly a deployment effect? If so then we should remove it.
 		local pawnList = extract_table(Board:GetPawns(TEAM_ANY))
 		for i = 1, #pawnList do
 			local unit = Board:GetPawn(pawnList[i])
 			local space = unit:GetSpace()
 			if unit:GetTeam() ~= TEAM_PLAYER and Board:IsValid(space) then
-				damage.loc = space
-				ret:AddDamage(damage)
-				ret:AddDelay(0.1)
+				if (GetCurrentMission().ID == "Mission_FreezeBots" and unit:GetDefaultFaction() ~= FACTION_BOTS) or GetCurrentMission().ID ~= "Mission_FreezeBots" then
+					--if you don't think this is appropriate for whatever balance reasons remove the condition, but I personally think that
+					--it should not screw you over on this mission (same line of reasoning as Void Shocker). If you want to go all the way,
+					--then don't check for the mission, since it's a massive advantage to the player to insta-kill Bots, imho. But YMMV.
+					modApi:scheduleHook(100*i, function()
+						if Game then Game:TriggerSound("/props/fire_damage") end
+						if Board then Board:AddAnimation(space,"ExploSunbeam",0) Board:SetFire(space,true) end
+					end)--100ms between each one seems to be good, but adjust it as you see fit.
+					--If you want the first one to be delayed differently,
+					--replace it with this exact expression: (i>1 and 100*i) or first_delay
+					--where first_delay is whatever value in ms you want it to be.
+				end
 			end
 		end
-		
-		if Board then Board:AddEffect(ret) end-- prevent possible crash when player backs out to menu
 	end
 end
 
